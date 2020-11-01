@@ -25,7 +25,8 @@ let roles = {
     roleHauler: {
         run: function (creepName: string, sourceIndex: number) {
             let creep = Game.creeps[creepName];
-            var sources = creep.room.find(FIND_DROPPED_RESOURCES);
+            let sources = creep.room.find(FIND_DROPPED_RESOURCES);
+
             if (creep.store.getUsedCapacity() === 0 || getDistance(creep, sources[sourceIndex].pos) < 3 || (creep.store.getUsedCapacity() === 0 || creep.store.getFreeCapacity() > 0)) {
                 if (creep.pickup(sources[sourceIndex]) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(sources[sourceIndex]);
@@ -38,15 +39,43 @@ let roles = {
         }
     },
     roleRangedDefender: {
-        run: function (creepName: string, sourceIndex: number) {
+        run: function (creepName: string, sourceIndex: number, attack: boolean) {
             let creep = Game.creeps[creepName];
-            let sources = creep.room.find(FIND_EXIT);
-            sources = Game.spawns['Spawn1'].room.find(FIND_EXIT);
-            creep.moveTo(sources[sourceIndex]);
+            let enemySources = creep.room.find(FIND_HOSTILE_CREEPS);
+
+            if (!attack) {
+            creep.moveTo(30, 15);
+            } else {            
+                if (creep.attack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(enemySources[sourceIndex]);
+                } else if (creep.rangedAttack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(enemySources[sourceIndex]);
+                }
+            }
+            // creep.moveTo(x, y);
 
             // come home
             // creep.moveTo(Game.spawns['Spawn1']);
 
+        }
+    },
+    roleWorker: {
+        run: function (creepName: string, sourceIndex: number) {
+            let creep = Game.creeps[creepName];
+            let sources = creep.room.find(FIND_DROPPED_RESOURCES);
+
+            if (creep.store.getUsedCapacity() === 0) {
+                if (creep.pickup(sources[sourceIndex]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(sources[sourceIndex]);
+                }
+            } else {
+                if (creep.room.controller) {
+                    if (creep)
+                    if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
+                        creep.moveTo(creep.room.controller);
+                    }
+                }
+            }
         }
     }
 };

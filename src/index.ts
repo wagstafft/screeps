@@ -1,10 +1,6 @@
 // import {roleHarvester} from './role';
 import roles = require('./role');
 
-//TODO get defenders to go to various exits
-//TODO get workers to do their thing
-//TODO get haulers to carry to level up the 
-//TODO setup github repo
 const debug_mode = true;
 let minerCount = 0;
 let haulerCount = 0;
@@ -12,8 +8,8 @@ let rangedDefenderCount = 0;
 let meleeDefenderCount = 0;
 let workerCount = 0;
 let MINER_LIMIT = 6;
-const HAULER_LIMIT = 12;
-const WORKER_LIMIT = 2;
+const HAULER_LIMIT = 10;
+const WORKER_LIMIT = 6;
 const RANGED_DEFENDER_LIMIT = 15;
 const MELEE_DEFENDER_LIMIT = 15;
 
@@ -54,6 +50,10 @@ function spawnWorker() {
     spawn('worker', [CARRY, MOVE, WORK], workerCount, WORKER_LIMIT);
 }
 
+function spawnHarvester() {
+    spawn('miner', [CARRY, MOVE, WORK], minerCount, MINER_LIMIT);
+}
+
 function spawnRangedDefender() {
     spawn('defenderRanged', [RANGED_ATTACK, TOUGH, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT);
 }
@@ -79,6 +79,7 @@ module.exports.loop = function () {
     let minerAssignedCount = 0;
     let haulerAssignedCount = 0;
     let defenderAssignedCount = 0;
+    let workerAssignedCount = 0;
     let minerAllocation = getMineableLocations();
     for (var name in Game.creeps) {
         if (name.includes('miner') || name.includes('harvest')) {
@@ -91,12 +92,20 @@ module.exports.loop = function () {
                     break;
                 }
             }
+        } else if (name.includes('worker')) {
+            let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
+            roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length);
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
             roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length);
         } else if (name.includes('defender')) {
-            let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
-            roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length);
+             let enemySources = Game.creeps[name].room.find(FIND_HOSTILE_CREEPS);
+             if (enemySources.length > 0) {
+             roles.roleRangedDefender.run(name, defenderAssignedCount++ % enemySources.length, true);
+             } else {
+                let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
+                roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false);
+             }
         }
     }
 
@@ -144,7 +153,11 @@ module.exports.loop = function () {
     if (Game.spawns['Spawn1'].store['energy'] === 300) {
         printReport();
         if (minerCount < MINER_LIMIT) {
-            spawnMiner();
+            if (minerCount === 0) {
+                spawnHarvester();
+            } else {
+                spawnMiner();
+            }
         } else if (haulerCount < HAULER_LIMIT) {
             spawnHauler();
         } else if (workerCount < WORKER_LIMIT) {
