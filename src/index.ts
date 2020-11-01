@@ -1,6 +1,7 @@
 // import {roleHarvester} from './role';
 import roles = require('./role');
 
+//TODO container building and storing
 const debug_mode = true;
 let minerCount = 0;
 let haulerCount = 0;
@@ -8,8 +9,8 @@ let rangedDefenderCount = 0;
 let meleeDefenderCount = 0;
 let workerCount = 0;
 let MINER_LIMIT = 6;
-const HAULER_LIMIT = 10;
-const WORKER_LIMIT = 6;
+const HAULER_LIMIT = 8;
+const WORKER_LIMIT = 8;
 const RANGED_DEFENDER_LIMIT = 15;
 const MELEE_DEFENDER_LIMIT = 15;
 
@@ -94,18 +95,25 @@ module.exports.loop = function () {
             }
         } else if (name.includes('worker')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
-            roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length);
+            let sourceConstruction = Game.creeps[name].room.find(FIND_CONSTRUCTION_SITES);
+            if (sourceConstruction.length == 0 || workerAssignedCount < 4) {
+                roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length, false);
+            } else {
+                roles.roleWorker.run(name, workerAssignedCount++ % sourceConstruction.length, true)
+            }
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
             roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length);
         } else if (name.includes('defender')) {
-             let enemySources = Game.creeps[name].room.find(FIND_HOSTILE_CREEPS);
-             if (enemySources.length > 0) {
-             roles.roleRangedDefender.run(name, defenderAssignedCount++ % enemySources.length, true);
-             } else {
-                let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
-                roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false);
-             }
+            let enemySources = Game.creeps[name].room.find(FIND_HOSTILE_CREEPS);
+            if (enemySources.length > 0) {
+                roles.roleRangedDefender.run(name, defenderAssignedCount++ % enemySources.length, true);
+            } else {
+                if (Game.time % 1 == 0) {
+                    let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
+                    roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false);
+                }
+            }
         }
     }
 

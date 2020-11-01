@@ -44,8 +44,8 @@ let roles = {
             let enemySources = creep.room.find(FIND_HOSTILE_CREEPS);
 
             if (!attack) {
-            creep.moveTo(30, 15);
-            } else {            
+                creep.moveTo(34, 16);
+            } else {
                 if (creep.attack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(enemySources[sourceIndex]);
                 } else if (creep.rangedAttack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
@@ -60,7 +60,7 @@ let roles = {
         }
     },
     roleWorker: {
-        run: function (creepName: string, sourceIndex: number) {
+        run: function (creepName: string, sourceIndex: number, construction: boolean) {
             let creep = Game.creeps[creepName];
             let sources = creep.room.find(FIND_DROPPED_RESOURCES);
 
@@ -69,10 +69,14 @@ let roles = {
                     creep.moveTo(sources[sourceIndex]);
                 }
             } else {
-                if (creep.room.controller) {
-                    if (creep)
+                let constructionSources = creep.room.find(FIND_CONSTRUCTION_SITES);
+                if (!construction) {
                     if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
                         creep.moveTo(creep.room.controller);
+                    }
+                } else {
+                    if (creep.build(constructionSources[sourceIndex]) == ERR_NOT_IN_RANGE) {
+                        creep.moveTo(constructionSources[sourceIndex]);
                     }
                 }
             }
