@@ -16,47 +16,60 @@ let meleeDefenderCount = 0;
 let claimDefenderCount = 0;
 let workerCount = 0;
 let MINER_LIMIT = 6;
-const HAULER_LIMIT = 4;
-const WORKER_LIMIT = 5;
-const RANGED_DEFENDER_LIMIT = 0;
+const HAULER_LIMIT = 6;
+const WORKER_LIMIT = 10;
+const RANGED_DEFENDER_LIMIT = 8;
 const CLAIM_DEFENDER_LIMIT = 0;
-const MELEE_DEFENDER_LIMIT = 0;
+const MELEE_DEFENDER_LIMIT = 8;
 
 function getMineableLocations() {
     MINER_LIMIT = 0;
     let minerSourceAllocation = [];
-    for (let name in Game.creeps) {
-        let sourceCount = Game.creeps[name].room.find(FIND_SOURCES);
+    let sourceCount = Game.spawns['Spawn1'].room.find(FIND_SOURCES);
 
-        for (let i = 0; i < sourceCount.length; i++) {
-            let source = Game.creeps[name].room.find(FIND_SOURCES)[i];
-            let mineableCount = 0;
-            for (let j = -1; j <= 1; j++) {
-                for (let k = -1; k <= 1; k++) {
-                    if (j !== 0 || k !== 0) {
-                        if (Game.map.getRoomTerrain(source.room.name).get(source.pos.x + j, source.pos.y + k) === 0) {
+    for (let i = 0; i < sourceCount.length; i++) {
+        let source = Game.spawns['Spawn1'].room.find(FIND_SOURCES)[i];
+        let mineableCount = 0;
+        for (let j = -1; j <= 1; j++) {
+            for (let k = -1; k <= 1; k++) {
+                if (j !== 0 || k !== 0) {
+                    if (source.room.find(FIND_STRUCTURES).filter((test) => test.pos.x === source.pos.x + j && test.pos.y === source.pos.y + k).length === 1) {
+                        mineableCount += 1;
+                    } else {
+                        let terrain = Game.map.getRoomTerrain(source.room.name).get(source.pos.x + j, source.pos.y + k);
+                        if (terrain === 0) {
                             mineableCount += 1;
                         }
                     }
                 }
             }
-            minerSourceAllocation.push({ source: i, minerCount: mineableCount });
-            MINER_LIMIT += mineableCount;
         }
-        return minerSourceAllocation;
+        minerSourceAllocation.push({ source: i, minerCount: mineableCount });
+        MINER_LIMIT += mineableCount;
     }
+    return minerSourceAllocation;
 }
 
 function spawnMiner() {
-    spawn('miner', [WORK, WORK, MOVE], minerCount, MINER_LIMIT);
+    // spawn('miner', [WORK, WORK, MOVE], minerCount, MINER_LIMIT);
+    if (spawn('miner', [WORK, WORK, WORK, MOVE], minerCount, MINER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        spawn('miner', [WORK, WORK, MOVE], minerCount, MINER_LIMIT)
+    }
 }
 
 function spawnHauler() {
-    spawn('hauler', [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], haulerCount, HAULER_LIMIT);
+    if (spawn('hauler', [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], haulerCount, HAULER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        spawn('hauler', [CARRY, CARRY, MOVE], haulerCount, HAULER_LIMIT);
+    }
 }
 
 function spawnWorker() {
-    spawn('worker', [CARRY, MOVE, WORK, WORK], workerCount, WORKER_LIMIT);
+    // spawn('worker', [CARRY, MOVE, WORK, WORK], workerCount, WORKER_LIMIT);
+
+    // 400
+    if (spawn('worker', [CARRY, CARRY, MOVE, MOVE, WORK, WORK], workerCount, WORKER_LIMIT)) {
+
+    }
 }
 
 function spawnHarvester() {
@@ -64,11 +77,19 @@ function spawnHarvester() {
 }
 
 function spawnRangedDefender() {
-    spawn('defenderRanged', [RANGED_ATTACK, TOUGH, TOUGH, MOVE, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT);
+    if (spawn('defenderRanged', [RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, TOUGH, TOUGH, TOUGH, MOVE, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        if (spawn('defenderRanged', [RANGED_ATTACK, RANGED_ATTACK, TOUGH, TOUGH, MOVE, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+            spawn('defenderRanged', [RANGED_ATTACK, TOUGH, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT);
+        }
+    }
 }
 
 function spawnMeleeDefender() {
-    spawn('defenderMelee', [TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT);
+    if (spawn('defenderMelee', [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        if (spawn('defenderMelee', [TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+            spawn('defenderMelee', [TOUGH, ATTACK, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT);
+        }
+    }
 }
 
 function spawnClaimDefender() {
@@ -79,12 +100,15 @@ function spawn(name: string, parts: BodyPartConstant[], count: number, limit: nu
         let spawnRetCode = Game.spawns['Spawn1'].spawnCreep(parts, `${name}${i}`)
         if (spawnRetCode === 0) {
             console.log(`Spawning ${name} with parts ${parts} we have ${++count} currently result ${spawnRetCode}`);
-            return;
+            return 0;
             // -3 name already used -4 spawner busy
         } else if (spawnRetCode !== -3 && spawnRetCode !== -4) {
             console.log(`Failed to spawn ${spawnRetCode}`);
+            return spawnRetCode;
         }
     }
+
+
 }
 
 module.exports.loop = function () {
@@ -107,10 +131,21 @@ module.exports.loop = function () {
         } else if (name.includes('worker')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
             let sourceConstruction = Game.creeps[name].room.find(FIND_CONSTRUCTION_SITES);
-            if (sourceConstruction.length == 0 || workerAssignedCount < 1) {
-                roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length, false);
-            } else {
-                roles.roleWorker.run(name, workerAssignedCount++ % sourceConstruction.length, true)
+            let repairSources = Game.creeps[name].room.find(FIND_STRUCTURES, { filter: function (object) { return object.structureType === STRUCTURE_ROAD || object.structureType === STRUCTURE_CONTAINER || object.structureType === STRUCTURE_RAMPART && (object.hits < object.hitsMax); } });
+            repairSources.sort((a, b) => {
+                return (a.hits / a.hitsMax) - (b.hits / b.hitsMax)
+            });
+
+            if (Game.creeps[name].store.getUsedCapacity() === 0) {
+                roles.roleWorker.run(name, workerAssignedCount % sourceCount.length, false, false);
+            } else if ((sourceConstruction.length === 0 && repairSources.length === 0) || workerAssignedCount < 1) {
+                roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length, false, false);
+            } else if (sourceConstruction.length !== 0 && workerAssignedCount % 2 == 0) {
+                console.log('construct');
+                roles.roleWorker.run(name, workerAssignedCount++ % sourceConstruction.length, true, false)
+            } else if (repairSources.length !== 0) {
+                console.log('repair');
+                roles.roleWorker.run(name, workerAssignedCount++ % repairSources.length, false, true)
             }
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
@@ -120,7 +155,7 @@ module.exports.loop = function () {
             if (enemySources.length > 0) {
                 roles.roleRangedDefender.run(name, defenderAssignedCount++ % enemySources.length, true, false);
             } else {
-                if (Game.time % 1 == 0) {
+                if (Game.time % 5 == 0) {
                     let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
                     roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false, true);
                 }
@@ -169,23 +204,23 @@ module.exports.loop = function () {
         }
     }
 
-    if (Game.time % 20 === 0) {
-        printReport();
-    }
+    // if (Game.time % 4 === 0) {
+    //     printReport();
+    // }
 
-    if (Game.spawns['Spawn1'].store['energy'] === Game.spawns['Spawn1'].store.getCapacity('energy')) {
-        printReport();
-        if (minerCount < MINER_LIMIT) {
-            if (minerCount === 0) {
-                spawnHarvester();
-            } else {
-                spawnMiner();
-            }
-        } else if (haulerCount < HAULER_LIMIT) {
-            spawnHauler();
-        } else if (workerCount < WORKER_LIMIT) {
-            spawnWorker();
-        } else if (rangedDefenderCount < RANGED_DEFENDER_LIMIT) {
+    printReport();
+    if (minerCount < MINER_LIMIT) {
+        if (haulerCount === 0) {
+            spawnHarvester();
+        } else {
+            spawnMiner();
+        }
+    } else if (haulerCount < HAULER_LIMIT) {
+        spawnHauler();
+    } else if (workerCount < WORKER_LIMIT) {
+        spawnWorker();
+    } else if (Game.time % 25 === 0) {
+        if (rangedDefenderCount < RANGED_DEFENDER_LIMIT) {
             spawnRangedDefender();
         } else if (meleeDefenderCount < MELEE_DEFENDER_LIMIT) {
             spawnMeleeDefender();
