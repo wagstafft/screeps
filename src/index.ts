@@ -1,6 +1,12 @@
 // import {roleHarvester} from './role';
-import roles = require('./role');
-
+import { Hive } from './BaseClasses/Hive';
+import roles = require('./Role');
+import {getUtil, StrutureSearchTypes } from './Utils';
+//TODO finish Tower manager to repair, and defend
+//TODO Hauler Manager
+//TODO Hauler Manger picks up loose source
+//TODO Hauler Manager picks up from Storage in emergency
+//TODO Hauler store energy when needed in extensions, and storage
 //TODO container building and storing
 //TODO repair
 //TODO take over second room
@@ -16,13 +22,13 @@ let meleeDefenderCount = 0;
 let claimDefenderCount = 0;
 let workerCount = 0;
 let MINER_LIMIT = 6;
-const HAULER_LIMIT = 6;
-const WORKER_LIMIT = 10;
-const RANGED_DEFENDER_LIMIT = 8;
+const HAULER_LIMIT = 8;
+const WORKER_LIMIT = 5;
+const RANGED_DEFENDER_LIMIT = 0;
 const CLAIM_DEFENDER_LIMIT = 0;
-const MELEE_DEFENDER_LIMIT = 8;
-
+const MELEE_DEFENDER_LIMIT = 0;
 function getMineableLocations() {
+    const HIVE = new Hive();
     MINER_LIMIT = 0;
     let minerSourceAllocation = [];
     let sourceCount = Game.spawns['Spawn1'].room.find(FIND_SOURCES);
@@ -129,24 +135,7 @@ module.exports.loop = function () {
                 }
             }
         } else if (name.includes('worker')) {
-            let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
-            let sourceConstruction = Game.creeps[name].room.find(FIND_CONSTRUCTION_SITES);
-            let repairSources = Game.creeps[name].room.find(FIND_STRUCTURES, { filter: function (object) { return object.structureType === STRUCTURE_ROAD || object.structureType === STRUCTURE_CONTAINER || object.structureType === STRUCTURE_RAMPART && (object.hits < object.hitsMax); } });
-            repairSources.sort((a, b) => {
-                return (a.hits / a.hitsMax) - (b.hits / b.hitsMax)
-            });
-
-            if (Game.creeps[name].store.getUsedCapacity() === 0) {
-                roles.roleWorker.run(name, workerAssignedCount % sourceCount.length, false, false);
-            } else if ((sourceConstruction.length === 0 && repairSources.length === 0) || workerAssignedCount < 1) {
-                roles.roleWorker.run(name, workerAssignedCount++ % sourceCount.length, false, false);
-            } else if (sourceConstruction.length !== 0 && workerAssignedCount % 2 == 0) {
-                console.log('construct');
-                roles.roleWorker.run(name, workerAssignedCount++ % sourceConstruction.length, true, false)
-            } else if (repairSources.length !== 0) {
-                console.log('repair');
-                roles.roleWorker.run(name, workerAssignedCount++ % repairSources.length, false, true)
-            }
+                roles.roleWorker.run(name)
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
             roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length);
@@ -172,7 +161,7 @@ module.exports.loop = function () {
         console.log(`Energy ${spawn.store['energy']}/${spawn.store.getCapacity('energy')}`);
         console.log(`Miner Count ${minerCount}/${MINER_LIMIT}`);
         console.log(`Hauler Count ${haulerCount}/${HAULER_LIMIT}`);
-        console.log(`WOrker Count ${workerCount}/${WORKER_LIMIT}`);
+        console.log(`Worker Count ${workerCount}/${WORKER_LIMIT}`);
         console.log(`Ranged Defender Count ${rangedDefenderCount}/${RANGED_DEFENDER_LIMIT}`);
         console.log(`Melee Defender Count ${meleeDefenderCount}/${MELEE_DEFENDER_LIMIT}`);
         console.log(`Claim Defender Count ${claimDefenderCount}/${CLAIM_DEFENDER_LIMIT}`);
@@ -231,30 +220,3 @@ module.exports.loop = function () {
 }
 
 module.exports.loop();
-
-// Move
-    // var creep = Game.creeps['Harvester1'];
-    // var sources = creep.room.find(FIND_SOURCES);
-    // if(creep.harvest(sources[0]) == ERR_NOT_IN_RANGE) {
-    //     creep.moveTo(sources[0]);
-    // }
-
-// Spawn
-//    Game.spawns['Spawn1'].spawnCreep( [WORK, CARRY, MOVE], 'Harvester2' );
-
-//
-// Game.spawns['Spawn1'].spawnCreep( [WORK, CARRY, MOVE], 'Harvester2' );
-//     console.log('yay5');
-//     var creep = Game.creeps['Harvester1'];
-
-//     if(creep.store.getFreeCapacity() > 0) {
-//         var sources = creep.room.find(FIND_SOURCES);
-//         if(creep.harvest(sources[0]) == ERR_NOT_IN_RANGE) {
-//             creep.moveTo(sources[0]);
-//         }
-//     }
-//     else {
-//         if( creep.transfer(Game.spawns['Spawn1'], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE ) {
-//             creep.moveTo(Game.spawns['Spawn1']);
-//         }
-//     }

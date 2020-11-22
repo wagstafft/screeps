@@ -1,3 +1,4 @@
+import { getUtil, StrutureSearchTypes } from './Utils';
 function getDistance(creep: Creep, pos: RoomPosition) {
     return Math.abs(creep.pos.x + pos.x) + Math.abs(creep.pos.y + pos.y);
 }
@@ -30,17 +31,32 @@ let roles = {
             let sources = creep.room.find(FIND_DROPPED_RESOURCES);
             let storage = creep.room.find<StructureContainer>(FIND_STRUCTURES).filter((source) => (source.structureType === 'container' || source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
 
+
+
             if (sources.length > 0 && (creep.store.getUsedCapacity() === 0 || getDistance(creep, sources[sourceIndex].pos) < 3 || (creep.store.getUsedCapacity() === 0 || creep.store.getFreeCapacity() > 0))) {
                 if (creep.pickup(sources[sourceIndex]) == ERR_NOT_IN_RANGE) {
                     delayedSay(creep, 'pickup');
                     creep.moveTo(sources[sourceIndex]);
                 }
-            } else if(creep.store.getUsedCapacity() === 0 && storage[storage.length % sourceIndex]) {
+            } else if (creep.store.getUsedCapacity() === 0 && storage[storage.length % sourceIndex]) {
                 delayedSay(creep, 'reserve pkup');
                 if (creep.withdraw(storage[storage.length % sourceIndex], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(storage[storage.length % sourceIndex])
                 }
-            }else {
+            } else {
+                if (sourceIndex === 3 || sourceIndex === 2) {
+                    let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
+                    if (tower?.length ?? 0 > 0) {
+                        if (tower[0].store.getCapacity('energy') !== tower[0].store['energy']) {
+                            delayedSay(creep, 'charge tower');
+                            if (creep.transfer(tower[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                                creep.moveTo(tower[0]);
+                            }
+                            return;
+                        }
+                    }
+                }
+
                 if (Game.spawns['Spawn1'].store['energy'] === Game.spawns['Spawn1'].store.getCapacity('energy')) {
                     let extensionSources = creep.room.find<StructureExtension>(FIND_MY_STRUCTURES).filter((source) => source.structureType === "extension");
                     for (let extension of extensionSources) {
@@ -115,61 +131,41 @@ let roles = {
         }
     },
     roleWorker: {
-        run: function (creepName: string, sourceIndex: number, construction: boolean, repair: boolean) {
+        run: function (creepName: string) {
             let creep = Game.creeps[creepName];
-
-            let sources = creep.room.find(FIND_DROPPED_RESOURCES);
-            // creep.moveTo(sources[0], { visualizePathStyle: { stroke: '#ffffff' } });
             if (creep.store.getUsedCapacity() === 0) {
+                let source = getUtil().SearchStructures(creep.room, StrutureSearchTypes.allWithDrawableStorage).sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b))[0];
                 delayedSay(creep, 'pickup');
-                if (creep.pickup(sources[sourceIndex]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(sources[sourceIndex]);
-                }
-            } else if (repair) {
-                let repairSources = creep.room.find(FIND_STRUCTURES, { filter: function (object) { return object.structureType === STRUCTURE_ROAD || object.structureType === STRUCTURE_CONTAINER || object.structureType === STRUCTURE_RAMPART && (object.hits < object.hitsMax); } });
-                repairSources.sort((a, b) => {
-                    return (a.hits / a.hitsMax) - (b.hits / b.hitsMax)
-                });
-
-                console.log('repair2');
-                let target: Structure = null;
-                // if (!Memory.creeps[creepName].target) {
-                //     console.log('huh');
-                //     Memory.creeps[creepName].target = repairSources[sourceIndex];
-                //     target = repairSources[sourceIndex];
-                //     console.log('new target ' + Game.getObjectById(Memory.creeps[creepName].target)); // -> 'harvester'
-                // }
-
-                // target = Game.getObjectById(Memory.creeps[creepName].target);
-target = repairSources[sourceIndex];
-                console.log('target ' + target);
-                if (creep.repair(target) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(target, { visualizePathStyle: { stroke: '#ff0000' } });
-                    delayedSay(creep, 'em repair');
-                }
-
-                // if (creep.memory.target.hits === creep.memory.target.hitsMax) {
-                //     creep.memory.target = null;
-                // }
-
-            } else if (construction) {
-                let constructionSources = creep.room.find(FIND_CONSTRUCTION_SITES);
-                delayedSay(creep, 'bld');
-                if (creep.build(constructionSources[sourceIndex]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(constructionSources[sourceIndex]);
+                if (creep.withdraw(source, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(source);
                 }
             } else {
-                delayedSay(creep, 'upg cont');
-                if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(creep.room.controller);
+                let constructionSources = creep.room.find(FIND_CONSTRUCTION_SITES).sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
+                let constructionSource;
+
+                if (constructionSources?.length > 0) {
+                    constructionSource = constructionSources[0];
+                }
+                
+
+                delayedSay(creep, 'bld');
+                if (constructionSource) {
+                    if (creep.build(constructionSource) == ERR_NOT_IN_RANGE) {
+                        creep.moveTo(constructionSource);
+                    }
+                } else {
+                    delayedSay(creep, 'upg cont');
+                    if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
+                        creep.moveTo(creep.room.controller);
+                    }
                 }
             }
         }
     }
-};
+}
 
 function delayedSay(creep: Creep, message: string) {
-    if (Game.time % 4 === 0) {
+    if (Game.time % 1 === 0) {
         creep.say(message);
     }
 }
