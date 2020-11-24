@@ -28,7 +28,7 @@ class Util {
     private getRoomResults: (room: Room) => searchResults[] = (room) => this._structureSearchs.find((search) => search.room === room)?.searchs;
     private getSearchTypeResults: (room: Room, searchType: StrutureSearchTypes) => Structure[] = (room, searchType) => this.getRoomResults(room).find((result) => result.searchType === searchType)?.structures;
 
-    public SearchStructures(searchRoom: Room, searchType: StrutureSearchTypes): Structure[] {
+    public searchStructures(searchRoom: Room, searchType: StrutureSearchTypes): Structure[] {
         let cachedRoomResults: searchResults[] = this.getRoomResults(searchRoom);
         // Have we ever searched this room?
         if (!cachedRoomResults) {
@@ -87,6 +87,36 @@ class Util {
         }
 
         return this.getSearchTypeResults(searchRoom, searchType);
+    }
+    
+    public getUsableEnergy(room: Room): number {
+        return room.energyAvailable;
+    }
+
+    public getUsableEnergyRatio(room: Room): number {
+        return room.energyAvailable / room.energyCapacityAvailable
+    }
+
+    public getStorableEnergy(room: Room): number {
+        return this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).map((struct) => {
+            let store = struct as StructureStorage | StructureContainer;
+            return store.store.getCapacity();
+        }).reduce((a, b) => {
+            return a + b;
+        });
+    }
+
+    public getUsedStorableEnergy(room: Room): number {
+        return this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).map((struct) => {
+            let store = struct as StructureStorage | StructureContainer;
+            return store.store.getUsedCapacity();
+        }).reduce((a, b) => {
+            return a + b;
+        });
+    }
+
+    public getStorableEnergyRatio(room: Room): number {
+        return this.getUsedStorableEnergy(room) / this.getStorableEnergy(room);
     }
 }
 

@@ -10,9 +10,11 @@ let roles = {
         /** @param {Creep} creep **/
         run: function (creepName: string, sourceIndex: number) {
             let creep = Game.creeps[creepName];
+            let sources = creep.room.find(FIND_SOURCES);
 
-            if (creep.store.getFreeCapacity() > 0 || creep.store.getCapacity() === null) {
-                var sources = creep.room.find(FIND_SOURCES);
+            if (sources.length === 0) {
+                creep.moveTo(Game.spawns['Spawn1']);
+            } else if (creep.store.getFreeCapacity() > 0 || creep.store.getCapacity() === null) {
                 delayedSay(creep, 'mining');
                 if (creep.harvest(sources[sourceIndex]) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(sources[sourceIndex]);
@@ -26,11 +28,27 @@ let roles = {
         }
     },
     roleHauler: {
-        run: function (creepName: string, sourceIndex: number) {
+        run: function (creepName: string, sourceIndex: number, towerIndex: number, towerCharge: boolean) {
             let creep = Game.creeps[creepName];
             let sources = creep.room.find(FIND_DROPPED_RESOURCES);
-            let storage = creep.room.find<StructureContainer>(FIND_STRUCTURES).filter((source) => (source.structureType === 'container' || source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
+            let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
+            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
 
+
+            if (towerCharge && creep.store.getUsedCapacity() === 0 && tower[0].store.getCapacity('energy') !== tower[0].store['energy'] && storage.length > 0) {
+                if (creep.withdraw(storage[0], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(storage[0]);
+                    return;
+                }
+            } else if (towerCharge) {
+                if (tower[towerIndex].store.getCapacity('energy') !== tower[towerIndex].store['energy']) {
+                    delayedSay(creep, 'charge tower');
+                    if (creep.transfer(tower[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                        creep.moveTo(tower[0]);
+                    }
+                    return;
+                }
+            }
 
 
             if (sources.length > 0 && (creep.store.getUsedCapacity() === 0 || getDistance(creep, sources[sourceIndex].pos) < 3 || (creep.store.getUsedCapacity() === 0 || creep.store.getFreeCapacity() > 0))) {
@@ -44,19 +62,6 @@ let roles = {
                     creep.moveTo(storage[storage.length % sourceIndex])
                 }
             } else {
-                if (sourceIndex === 3 || sourceIndex === 2) {
-                    let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
-                    if (tower?.length ?? 0 > 0) {
-                        if (tower[0].store.getCapacity('energy') !== tower[0].store['energy']) {
-                            delayedSay(creep, 'charge tower');
-                            if (creep.transfer(tower[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                                creep.moveTo(tower[0]);
-                            }
-                            return;
-                        }
-                    }
-                }
-
                 if (Game.spawns['Spawn1'].store['energy'] === Game.spawns['Spawn1'].store.getCapacity('energy')) {
                     let extensionSources = creep.room.find<StructureExtension>(FIND_MY_STRUCTURES).filter((source) => source.structureType === "extension");
                     for (let extension of extensionSources) {
@@ -134,7 +139,7 @@ let roles = {
         run: function (creepName: string) {
             let creep = Game.creeps[creepName];
             if (creep.store.getUsedCapacity() === 0) {
-                let source = getUtil().SearchStructures(creep.room, StrutureSearchTypes.allWithDrawableStorage).sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b))[0];
+                let source = getUtil().searchStructures(creep.room, StrutureSearchTypes.allWithDrawableStorage).sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b))[0];
                 delayedSay(creep, 'pickup');
                 if (creep.withdraw(source, RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(source);
@@ -146,7 +151,7 @@ let roles = {
                 if (constructionSources?.length > 0) {
                     constructionSource = constructionSources[0];
                 }
-                
+
 
                 delayedSay(creep, 'bld');
                 if (constructionSource) {
@@ -156,6 +161,8 @@ let roles = {
                 } else {
                     delayedSay(creep, 'upg cont');
                     if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
+                        creep.moveTo(creep.room.controller);
+                    } else {
                         creep.moveTo(creep.room.controller);
                     }
                 }

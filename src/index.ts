@@ -1,7 +1,7 @@
 // import {roleHarvester} from './role';
 import { Hive } from './BaseClasses/Hive';
 import roles = require('./Role');
-import {getUtil, StrutureSearchTypes } from './Utils';
+import { getUtil, StrutureSearchTypes } from './Utils';
 //TODO finish Tower manager to repair, and defend
 //TODO Hauler Manager
 //TODO Hauler Manger picks up loose source
@@ -14,6 +14,7 @@ import {getUtil, StrutureSearchTypes } from './Utils';
 //TODO build walls automatically
 //TODO dynamically use spawners(not hard locked to Spawner1)
 //TODO dynalically scale up spawns to take advantage of more or less energy capacity
+//TODO recycle creeps when we have energy for upgrading them
 const debug_mode = true;
 let minerCount = 0;
 let haulerCount = 0;
@@ -23,7 +24,7 @@ let claimDefenderCount = 0;
 let workerCount = 0;
 let MINER_LIMIT = 6;
 const HAULER_LIMIT = 8;
-const WORKER_LIMIT = 5;
+const WORKER_LIMIT = 8;
 const RANGED_DEFENDER_LIMIT = 0;
 const CLAIM_DEFENDER_LIMIT = 0;
 const MELEE_DEFENDER_LIMIT = 0;
@@ -58,28 +59,25 @@ function getMineableLocations() {
 
 function spawnMiner() {
     // spawn('miner', [WORK, WORK, MOVE], minerCount, MINER_LIMIT);
-    if (spawn('miner', [WORK, WORK, WORK, MOVE], minerCount, MINER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-        spawn('miner', [WORK, WORK, MOVE], minerCount, MINER_LIMIT)
+    if (spawn('minerLvl2', [WORK, WORK, WORK, MOVE], minerCount, MINER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        spawn('minerLvl1', [WORK, WORK, MOVE], minerCount, MINER_LIMIT)
     }
 }
 
 function spawnHauler() {
-    if (spawn('hauler', [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], haulerCount, HAULER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-        spawn('hauler', [CARRY, CARRY, MOVE], haulerCount, HAULER_LIMIT);
+    if (spawn('haulerLvl2', [CARRY, CARRY, CARRY, CARRY, MOVE, MOVE], haulerCount, HAULER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        spawn('haulerLvl1', [CARRY, CARRY, MOVE], haulerCount, HAULER_LIMIT);
     }
 }
 
 function spawnWorker() {
-    // spawn('worker', [CARRY, MOVE, WORK, WORK], workerCount, WORKER_LIMIT);
-
-    // 400
-    if (spawn('worker', [CARRY, CARRY, MOVE, MOVE, WORK, WORK], workerCount, WORKER_LIMIT)) {
-
+    if (spawn('workerLvl2', [CARRY, CARRY, MOVE, MOVE, WORK, WORK], workerCount, WORKER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
+        spawn('workerLvl1', [CARRY, MOVE, WORK, WORK], workerCount, WORKER_LIMIT);
     }
 }
 
 function spawnHarvester() {
-    spawn('miner', [CARRY, MOVE, WORK], minerCount, MINER_LIMIT);
+    spawn('minerLvl1', [CARRY, MOVE, WORK], minerCount, MINER_LIMIT);
 }
 
 function spawnRangedDefender() {
@@ -120,10 +118,21 @@ function spawn(name: string, parts: BodyPartConstant[], count: number, limit: nu
 module.exports.loop = function () {
     let minerAssignedCount = 0;
     let haulerAssignedCount = 0;
+    let towerAssigned = 0;
     let defenderAssignedCount = 0;
     let workerAssignedCount = 0;
     let minerAllocation = getMineableLocations();
+
+    let spawn = Game.spawns['Spawn1'];
+    let creeps: Creep[] = [];
     for (var name in Game.creeps) {
+        creeps.push(Game.creeps[name]);
+
+        let creep = Game.creeps[name];
+        if (getUtil().getUsableEnergyRatio(spawn.room) > .5 && creep.ticksToLive < 200 || (creep.ticksToLive < 1400 && spawn.pos.getRangeTo(creep) <= 1)) {
+            creep.moveTo(Game.spawns['Spawn1']);
+            continue;
+        }
         if (name.includes('miner') || name.includes('harvest')) {
             let requiredMiners = 0;
             for (let allocation of minerAllocation) {
@@ -135,10 +144,17 @@ module.exports.loop = function () {
                 }
             }
         } else if (name.includes('worker')) {
-                roles.roleWorker.run(name)
+            roles.roleWorker.run(name)
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
-            roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length);
+            let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
+            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower').filter((tower) => tower.store.energy < 600 || (creep.pos.getRangeTo(tower.pos) <= 1 && tower.store.energy < 900));
+
+            if (storage.length > 0 && tower.length > 0 && towerAssigned < tower.length) {
+                roles.roleHauler.run(name, 0, towerAssigned++, true);
+            } else {
+                roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length, 0, false);
+            }
         } else if (name.includes('defender')) {
             let enemySources = Game.creeps[name].room.find(FIND_HOSTILE_CREEPS);
             if (enemySources.length > 0) {
@@ -152,19 +168,38 @@ module.exports.loop = function () {
         }
     }
 
+    console.log(creeps);
+
+    let sortedScreeps = creeps.filter((creep) => {
+        return creep.ticksToLive < 1400;
+    }).sort((a, b) => {
+        return Game.spawns['Spawn1'].pos.getRangeTo(a) - Game.spawns['Spawn1'].pos.getRangeTo(b);
+    });
+
+    if (sortedScreeps.length > 1) {
+        sortedScreeps.forEach((creep) => {
+            Game.spawns['Spawn1'].renewCreep(creep);
+        })
+    }
+
     function printReport() {
         getCreepCounts();
 
-        let spawn = Game.spawns['Spawn1'];
+        let rooms: Room[] = [];
+        for (let spawn in Game.spawns) {
+            console.log(spawn);
+            if (rooms.indexOf(Game.spawns[spawn].room) === -1) {
+                rooms.push(Game.spawns[spawn].room);
+            }
+        }
         console.log('\n================START REPORT==================================');
-        console.log(`Room ${spawn.room}`);
-        console.log(`Energy ${spawn.store['energy']}/${spawn.store.getCapacity('energy')}`);
-        console.log(`Miner Count ${minerCount}/${MINER_LIMIT}`);
-        console.log(`Hauler Count ${haulerCount}/${HAULER_LIMIT}`);
-        console.log(`Worker Count ${workerCount}/${WORKER_LIMIT}`);
-        console.log(`Ranged Defender Count ${rangedDefenderCount}/${RANGED_DEFENDER_LIMIT}`);
-        console.log(`Melee Defender Count ${meleeDefenderCount}/${MELEE_DEFENDER_LIMIT}`);
-        console.log(`Claim Defender Count ${claimDefenderCount}/${CLAIM_DEFENDER_LIMIT}`);
+        console.log(`Room\t\tUSB_⚡\t\tStore_⚡\t\tTowers🏢\tTower⚡\t\tMiners⛏️\tHaulers🚚\tWorkers👷\tRanged🏹\tMelee⚔️\t\tClaim🏁`)
+        rooms.forEach((room) => {
+            let towers = room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
+            let towerEng = towers.map((x) => x.store.energy).reduce((a, b) => a + b);
+            
+            console.log(`${room}\t${getUtil().getUsableEnergy(room)}(${getUtil().getUsableEnergyRatio(room).toFixed(2)})\t${getUtil().getUsedStorableEnergy(room)}/${getUtil().getStorableEnergy(room)}(${getUtil().getStorableEnergyRatio(room).toFixed(2)})\t${towers.length}\t\t${towerEng}/${towers.length * 1000}\t${minerCount}/${MINER_LIMIT}\t\t${haulerCount}/${HAULER_LIMIT}\t\t${workerCount}/${WORKER_LIMIT}\t\t${rangedDefenderCount}/${RANGED_DEFENDER_LIMIT}\t\t${meleeDefenderCount}/${MELEE_DEFENDER_LIMIT}\t\t${claimDefenderCount}/${CLAIM_DEFENDER_LIMIT}`);
+        });
         console.log('=================END REPORT===================================\n');
     }
 
