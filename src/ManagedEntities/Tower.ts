@@ -24,11 +24,10 @@ export class Tower extends ManagedEntity<TowerRoles, TowerTarget>  {
 
     energyCapacityPercentage = () => this._tower.store['energy'] / this._tower.store.getCapacity('energy');
     executeRole(): void {
-        console.log("hey we have a target " + this.Target);
         switch (this.Role) {
             case TowerRoles.repair:
                 if (this.energyCapacityPercentage() > NON_EMERGENCY_ENERGY_USE_THRESHOLD) {
-                    console.log(this._tower.repair(this.Target as Structure));
+                    this._tower.repair(this.Target as Structure);
                 }
                 break;
             case TowerRoles.defend:
@@ -36,8 +35,7 @@ export class Tower extends ManagedEntity<TowerRoles, TowerTarget>  {
                 break;
             case TowerRoles.heal:
                 if (this.energyCapacityPercentage() > NON_EMERGENCY_ENERGY_USE_THRESHOLD) {
-                    console.log('heal?');
-                    console.log(this._tower.heal(this.Target as Creep));
+                    this._tower.heal(this.Target as Creep);
                 }
                 break;
             case TowerRoles.idle:

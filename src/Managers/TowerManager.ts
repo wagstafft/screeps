@@ -2,7 +2,7 @@ import { Manager, RoomItem } from "./Manager";
 import { Tower, TowerRoles, TowerTarget, } from "../ManagedEntities/Tower";
 import { getUtil, StrutureSearchTypes } from "../Utils";
 
-const MAX_RAMPART_REPAIR_HITS = 400_000;
+const MAX_RAMPART_REPAIR_HITS = 500_000;
 export interface TowerMemory {
 
 }

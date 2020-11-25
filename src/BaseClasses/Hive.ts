@@ -43,7 +43,7 @@ export class Hive {
         this._managers.push(new HaulerManager(hiveMemory.rooms));
 
         this._managers.forEach((manager) => {
-            manager.report();
+            // manager.report();
         });
     }
 

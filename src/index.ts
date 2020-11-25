@@ -29,7 +29,6 @@ const RANGED_DEFENDER_LIMIT = 0;
 const CLAIM_DEFENDER_LIMIT = 0;
 const MELEE_DEFENDER_LIMIT = 0;
 function getMineableLocations() {
-    const HIVE = new Hive();
     MINER_LIMIT = 0;
     let minerSourceAllocation = [];
     let sourceCount = Game.spawns['Spawn1'].room.find(FIND_SOURCES);
@@ -116,6 +115,7 @@ function spawn(name: string, parts: BodyPartConstant[], count: number, limit: nu
 }
 
 module.exports.loop = function () {
+    const HIVE = new Hive();
     let minerAssignedCount = 0;
     let haulerAssignedCount = 0;
     let towerAssigned = 0;
@@ -168,11 +168,9 @@ module.exports.loop = function () {
         }
     }
 
-    console.log(creeps);
-
     let sortedScreeps = creeps.filter((creep) => {
         return creep.ticksToLive < 1400;
-    }).sort((a, b) => {
+    }).sort((a,b) => b.ticksToLive - a.ticksToLive).sort((a, b) => {
         return Game.spawns['Spawn1'].pos.getRangeTo(a) - Game.spawns['Spawn1'].pos.getRangeTo(b);
     });
 
@@ -187,20 +185,19 @@ module.exports.loop = function () {
 
         let rooms: Room[] = [];
         for (let spawn in Game.spawns) {
-            console.log(spawn);
             if (rooms.indexOf(Game.spawns[spawn].room) === -1) {
                 rooms.push(Game.spawns[spawn].room);
             }
         }
-        console.log('\n================START REPORT==================================');
-        console.log(`Room\t\tUSB_⚡\t\tStore_⚡\t\tTowers🏢\tTower⚡\t\tMiners⛏️\tHaulers🚚\tWorkers👷\tRanged🏹\tMelee⚔️\t\tClaim🏁`)
+        console.log('\n================================================================================START REPORT==================================================================================================');
+        console.log(`Room🛏️\t\tUSB⚡\t\tStore⚡\t\t\tTowers🏢\tTower⚡\t\tMiners⛏️\tHaulers🚚\tWorkers👷\tRanged🏹\tMelee⚔️\t\tClaim🏁`)
         rooms.forEach((room) => {
             let towers = room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
             let towerEng = towers.map((x) => x.store.energy).reduce((a, b) => a + b);
-            
+
             console.log(`${room}\t${getUtil().getUsableEnergy(room)}(${getUtil().getUsableEnergyRatio(room).toFixed(2)})\t${getUtil().getUsedStorableEnergy(room)}/${getUtil().getStorableEnergy(room)}(${getUtil().getStorableEnergyRatio(room).toFixed(2)})\t${towers.length}\t\t${towerEng}/${towers.length * 1000}\t${minerCount}/${MINER_LIMIT}\t\t${haulerCount}/${HAULER_LIMIT}\t\t${workerCount}/${WORKER_LIMIT}\t\t${rangedDefenderCount}/${RANGED_DEFENDER_LIMIT}\t\t${meleeDefenderCount}/${MELEE_DEFENDER_LIMIT}\t\t${claimDefenderCount}/${CLAIM_DEFENDER_LIMIT}`);
         });
-        console.log('=================END REPORT===================================\n');
+        console.log('=================================================================================END REPORT===================================================================================================\n');
     }
 
     function getCreepCounts() {
