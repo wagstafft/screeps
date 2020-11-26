@@ -29,6 +29,7 @@ export class Hive {
         // if (Game.time % REFRESH_HIVE_MEMORY_INTERVAL == 0 || !hiveMemory) {
         //     console.log('REFRESHING HIVE TIME ' + Game.time);
         //     console.log('spawns ' + Game.spawns);
+
         for (const i in Game.spawns) {
             this._spawners.push(Game.spawns[i]);
             this._rooms.push(Game.spawns[i].room);
@@ -43,7 +44,7 @@ export class Hive {
         this._managers.push(new HaulerManager(hiveMemory.rooms));
 
         this._managers.forEach((manager) => {
-            // manager.report();
+            manager.report();
         });
     }
 

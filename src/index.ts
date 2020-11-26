@@ -129,7 +129,7 @@ module.exports.loop = function () {
         creeps.push(Game.creeps[name]);
 
         let creep = Game.creeps[name];
-        if (getUtil().getUsableEnergyRatio(spawn.room) > .5 && creep.ticksToLive < 200 || (creep.ticksToLive < 1400 && spawn.pos.getRangeTo(creep) <= 1)) {
+        if (getUtil().getUsableEnergyRatio(spawn.room) > .5 && creep.ticksToLive < 200 || (creep.ticksToLive < 1400 && spawn.pos.getRangeTo(creep) <= 1) && !creep.name.includes('Claim')) {
             creep.moveTo(Game.spawns['Spawn1']);
             continue;
         }
@@ -148,29 +148,29 @@ module.exports.loop = function () {
         } else if (name.includes('hauler')) {
             let sourceCount = Game.creeps[name].room.find(FIND_DROPPED_RESOURCES);
             let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
-            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower').filter((tower) => tower.store.energy < 600 || (creep.pos.getRangeTo(tower.pos) <= 1 && tower.store.energy < 900));
+            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
 
-            if (storage.length > 0 && tower.length > 0 && towerAssigned < tower.length) {
+            if (storage.length > 0 && tower.length > 0 && towerAssigned === 0) {
                 roles.roleHauler.run(name, 0, towerAssigned++, true);
             } else {
                 roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length, 0, false);
             }
+        } else if (name.includes('Claim')) {
+            roles.roleClaim.run(name);
         } else if (name.includes('defender')) {
             let enemySources = Game.creeps[name].room.find(FIND_HOSTILE_CREEPS);
             if (enemySources.length > 0) {
                 roles.roleRangedDefender.run(name, defenderAssignedCount++ % enemySources.length, true, false);
             } else {
-                if (Game.time % 5 == 0) {
-                    let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
-                    roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false, true);
-                }
+                let sourceCount = Game.creeps[name].room.find(FIND_EXIT);
+                roles.roleRangedDefender.run(name, defenderAssignedCount++ % sourceCount.length, false, true);
             }
         }
     }
 
     let sortedScreeps = creeps.filter((creep) => {
         return creep.ticksToLive < 1400;
-    }).sort((a,b) => b.ticksToLive - a.ticksToLive).sort((a, b) => {
+    }).sort((a, b) => b.ticksToLive - a.ticksToLive).sort((a, b) => {
         return Game.spawns['Spawn1'].pos.getRangeTo(a) - Game.spawns['Spawn1'].pos.getRangeTo(b);
     });
 
@@ -240,7 +240,7 @@ module.exports.loop = function () {
         spawnHauler();
     } else if (workerCount < WORKER_LIMIT) {
         spawnWorker();
-    } else if (Game.time % 25 === 0) {
+    } else if (Game.time % 5 === 0) {
         if (rangedDefenderCount < RANGED_DEFENDER_LIMIT) {
             spawnRangedDefender();
         } else if (meleeDefenderCount < MELEE_DEFENDER_LIMIT) {

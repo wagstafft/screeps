@@ -2,7 +2,7 @@ import { Manager, RoomItem } from "./Manager";
 import { Tower, TowerRoles, TowerTarget, } from "../ManagedEntities/Tower";
 import { getUtil, StrutureSearchTypes } from "../Utils";
 
-const MAX_RAMPART_REPAIR_HITS = 500_000;
+const MAX_RAMPART_RATIO = .15;
 export interface TowerMemory {
 
 }
@@ -51,7 +51,7 @@ export class TowerManager extends Manager<Tower> {
                     }
                 } else {
                     // Filter out ramparts above a threshold
-                    damagedStructures = damagedStructures.filter((structure) => structure.structureType != STRUCTURE_RAMPART || structure.hits < MAX_RAMPART_REPAIR_HITS);
+                    damagedStructures = damagedStructures.filter((structure) => structure.structureType != STRUCTURE_RAMPART || (structure.hits < (structure.hitsMax * MAX_RAMPART_RATIO)));
 
                     if (damagedStructures.length > 0) {
                         role = TowerRoles.repair;

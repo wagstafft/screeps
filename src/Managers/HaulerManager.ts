@@ -6,7 +6,7 @@ import { Hauler } from "../ManagedEntities/Hauler";
 
 
 const USABLE_ENERGY_CRISIS_RATIO_THRESHOLD = .8;
-const USABLE_ENERGY_CRISIS_TOTAL_THRESHOLD = 300;
+const USABLE_ENERGY_CRISIS_TOTAL_THRESHOLD = 600;
 export class HaulerManager extends Manager<Hauler> {
     name(): string {
         return "Hauler Manager";
@@ -18,7 +18,6 @@ export class HaulerManager extends Manager<Hauler> {
 
     findManageditems(rooms: Room[]): RoomItem<Hauler>[] {
         return rooms.map((room) => {
-
             let creeps: Creep[] = room.find(FIND_CREEPS).filter((creep) => creep.name.toLowerCase().includes('hauler'));
             return { room: room, items: creeps.map((creep) => new Hauler(creep)) };
         });
@@ -31,15 +30,14 @@ export class HaulerManager extends Manager<Hauler> {
             let enemyAttackEmergency: boolean = roomItem.room.find(FIND_HOSTILE_CREEPS).length > 0;
 
 
-            // let droppedSources = roomItem.room.find(FIND_DROPPED_RESOURCES).filter((resource) => resource.resourceType === "energy").map((source) => {
-            //     return { amount: source.amount, source: source }
-            // });
+            let droppedSources = roomItem.room.find(FIND_DROPPED_RESOURCES).map((source) => {
+                return { amount: source.amount, source: source }
+            });
 
-            // console.log('dropped sources ' + droppedSources);
+            console.log('dropped sources ' + droppedSources);
+            
 
             // let depositStructures = getUtil().searchStructures(roomItem.room, StrutureSearchTypes.allStorage).map((structure) => {
-            //     let storeStructure = structure as StoreBase<RESOURCE_ENERGY, false>;
-
             //     console.log(storeStructure + 'store struct ' + storeStructure.getFreeCapacity);
             //     return { amount: storeStructure.getFreeCapacity ?? 0, structure: storeStructure };
             // }).filter((struct) => { struct.amount > 0 });

@@ -32,16 +32,16 @@ let roles = {
             let creep = Game.creeps[creepName];
             let sources = creep.room.find(FIND_DROPPED_RESOURCES);
             let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
-            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
+            let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower').filter((tower) => tower.store['energy'] < 700);
 
 
-            if (towerCharge && creep.store.getUsedCapacity() === 0 && tower[0].store.getCapacity('energy') !== tower[0].store['energy'] && storage.length > 0) {
+            if (towerCharge && creep.store.getUsedCapacity() === 0 && tower.length > 0 && storage.length > 0) {
                 if (creep.withdraw(storage[0], RESOURCE_ENERGY) == ERR_NOT_IN_RANGE) {
                     creep.moveTo(storage[0]);
                     return;
                 }
-            } else if (towerCharge) {
-                if (tower[towerIndex].store.getCapacity('energy') !== tower[towerIndex].store['energy']) {
+            } else if (towerCharge && tower.length > 0) {
+                if (tower[0].store.getCapacity('energy') !== tower[0].store['energy']) {
                     delayedSay(creep, 'charge tower');
                     if (creep.transfer(tower[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
                         creep.moveTo(tower[0]);
@@ -64,14 +64,14 @@ let roles = {
             } else {
                 if (Game.spawns['Spawn1'].store['energy'] === Game.spawns['Spawn1'].store.getCapacity('energy')) {
                     let extensionSources = creep.room.find<StructureExtension>(FIND_MY_STRUCTURES).filter((source) => source.structureType === "extension");
-                    for (let extension of extensionSources) {
-                        if (extension.store.getCapacity('energy') !== extension.store['energy']) {
-                            delayedSay(creep, 'chg ext');
-                            if (creep.transfer(extension, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
-                                creep.moveTo(extension);
-                            }
-                            return;
+                    let sortedExtensions = extensionSources.filter((extension) => extension.store.getCapacity('energy') !== extension.store['energy']).sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
+
+                    if (sortedExtensions.length > 0) {
+                        delayedSay(creep, 'chg ext');
+                        if (creep.transfer(sortedExtensions[0], RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
+                            creep.moveTo(sortedExtensions[0], { visualizePathStyle: { stroke: '#00ff00'}});
                         }
+                        return;
                     }
                     for (let storageSource of storage) {
                         delayedSay(creep, 'chg storage');
@@ -97,12 +97,15 @@ let roles = {
         run: function (creepName: string, sourceIndex: number, attack: boolean, conquest: boolean) {
             let creep = Game.creeps[creepName];
             let enemySources = creep.room.find(FIND_HOSTILE_CREEPS);
+            let enemyStructures = creep.room.find(FIND_HOSTILE_STRUCTURES);
+            let sortedEnemies = enemySources.sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
+            let sortedStructures = enemyStructures.sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
             if (attack) {
                 delayedSay(creep, 'attack');
-                if (creep.attack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(enemySources[sourceIndex], { visualizePathStyle: { stroke: '#ff0000' } });
-                } else if (creep.rangedAttack(enemySources[sourceIndex]) == ERR_NOT_IN_RANGE) {
-                    creep.moveTo(enemySources[sourceIndex], { visualizePathStyle: { stroke: '#ff0000' } });
+                if (creep.attack(sortedEnemies[0]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(sortedEnemies[0], { visualizePathStyle: { stroke: '#ff0000' } });
+                } else if (creep.rangedAttack(sortedEnemies[0]) == ERR_NOT_IN_RANGE) {
+                    creep.moveTo(sortedEnemies[0], { visualizePathStyle: { stroke: '#ff0000' } });
                 }
             } else if (Game.flags['rally']) {
                 delayedSay(creep, 'rally');
@@ -113,15 +116,20 @@ let roles = {
                 let flag = Game.flags['conquest'];
 
                 if (flag) {
-                    if (creep.room != flag.room) {
-                        creep.moveTo(flag);
-                    } else {
-                        delayedSay(creep, 'claim');
-
-                        console.log('claim ' + creep.claimController(creep.room.controller));
-                        if (creep.claimController(creep.room.controller) == ERR_NOT_IN_RANGE) {
-                            creep.moveTo(creep.room.controller);
+                    if (sortedEnemies.length > 0 && (sortedStructures.length === 0) || creep.pos.getRangeTo(sortedStructures[0]) < creep.pos.getRangeTo(sortedEnemies[0])) {
+                        if (creep.attack(sortedEnemies[0]) == ERR_NOT_IN_RANGE) {
+                            creep.moveTo(sortedEnemies[0], { visualizePathStyle: { stroke: '#ff0000' } });
+                        } else if (creep.rangedAttack(sortedEnemies[0]) == ERR_NOT_IN_RANGE) {
+                            creep.moveTo(sortedEnemies[0], { visualizePathStyle: { stroke: '#ff0000' } });
                         }
+                    } else if (sortedStructures.length > 0) {
+                        if (creep.attack(sortedStructures[0]) == ERR_NOT_IN_RANGE) {
+                            creep.moveTo(sortedStructures[0], { visualizePathStyle: { stroke: '#ff0000' } });
+                        } else if (creep.rangedAttack(sortedStructures[0]) == ERR_NOT_IN_RANGE) {
+                            creep.moveTo(sortedStructures[0], { visualizePathStyle: { stroke: '#ff0000' } });
+                        }
+                    } else {
+                        creep.moveTo(flag);
                     }
                 }
             } else {
@@ -163,6 +171,26 @@ let roles = {
                     if (creep.upgradeController(creep.room.controller) == ERR_NOT_IN_RANGE) {
                         creep.moveTo(creep.room.controller);
                     } else {
+                        creep.moveTo(creep.room.controller);
+                    }
+                }
+            }
+        }
+    },
+    roleClaim: {
+        run: function (creepName: string) {
+            let creep = Game.creeps[creepName];
+            let flag = Game.flags['conquest'];
+
+            if (flag) {
+                delayedSay(creep, 'conquer');
+                if (creep.room != flag.room) {
+                    creep.moveTo(flag);
+                } else {
+                    delayedSay(creep, 'claim');
+
+                    console.log('claim ' + creep.claimController(creep.room.controller));
+                    if (creep.claimController(creep.room.controller) == ERR_NOT_IN_RANGE) {
                         creep.moveTo(creep.room.controller);
                     }
                 }
