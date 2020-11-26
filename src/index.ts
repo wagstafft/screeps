@@ -150,10 +150,10 @@ module.exports.loop = function () {
             let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
             let tower = creep.room.find<StructureTower>(FIND_STRUCTURES).filter((structure) => structure.structureType === 'tower');
 
-            if (storage.length > 0 && tower.length > 0 && towerAssigned === 0) {
-                roles.roleHauler.run(name, 0, towerAssigned++, true);
+            if (storage.length > 0 && tower.length > 0 && towerAssigned++ === 0) {
+                roles.roleHauler.run(name, 0, true, false);
             } else {
-                roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length, 0, false);
+                roles.roleHauler.run(name, haulerAssignedCount++ % sourceCount.length, false, false);
             }
         } else if (name.includes('Claim')) {
             roles.roleClaim.run(name);

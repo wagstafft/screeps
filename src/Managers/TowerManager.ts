@@ -2,7 +2,7 @@ import { Manager, RoomItem } from "./Manager";
 import { Tower, TowerRoles, TowerTarget, } from "../ManagedEntities/Tower";
 import { getUtil, StrutureSearchTypes } from "../Utils";
 
-const MAX_RAMPART_RATIO = .15;
+const MAX_RAMPART_RATIO = .1;
 export interface TowerMemory {
 
 }

@@ -28,7 +28,7 @@ let roles = {
         }
     },
     roleHauler: {
-        run: function (creepName: string, sourceIndex: number, towerIndex: number, towerCharge: boolean) {
+        run: function (creepName: string, sourceIndex: number, towerCharge: boolean, linkCharge: boolean) {
             let creep = Game.creeps[creepName];
             let sources = creep.room.find(FIND_DROPPED_RESOURCES);
             let storage = creep.room.find<StructureStorage>(FIND_STRUCTURES).filter((source) => (source.structureType === 'storage') && source.store.getFreeCapacity() > 0);
