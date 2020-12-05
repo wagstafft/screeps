@@ -21,6 +21,7 @@ interface roomSearchResults {
     searchs: searchResults[]
 }
 
+// TODO calculate safe rooms, so screeps can flee
 class Util {
     private _structureSearchs: roomSearchResults[] = [];
 
@@ -88,7 +89,22 @@ class Util {
 
         return this.getSearchTypeResults(searchRoom, searchType);
     }
-    
+
+    public getAllDepositableEnergy(room: Room): AnyStoreStructure[] {
+        if (this.searchStructures(room, StrutureSearchTypes.allStorage).length === 0) {
+            return [];
+        }
+        return this.searchStructures(room, StrutureSearchTypes.allStorage).filter((struct) => struct as AnyStoreStructure).map((struct) => struct as AnyStoreStructure);
+    }
+
+    public getAllWithDrawableEnergy(room: Room): AnyStoreStructure[] {
+        if (this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).length === 0) {
+            return [];
+        }
+        return this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).filter((struct) => struct as AnyStoreStructure).map((struct) => struct as AnyStoreStructure);
+    }
+
+
     public getUsableEnergy(room: Room): number {
         return room.energyAvailable;
     }
@@ -98,6 +114,9 @@ class Util {
     }
 
     public getStorableEnergy(room: Room): number {
+        if (this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).length === 0) {
+            return 0;
+        }
         return this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).map((struct) => {
             let store = struct as StructureStorage | StructureContainer;
             return store.store.getCapacity();
@@ -107,6 +126,9 @@ class Util {
     }
 
     public getUsedStorableEnergy(room: Room): number {
+        if (this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).length === 0) {
+            return 0;
+        }
         return this.searchStructures(room, StrutureSearchTypes.allWithDrawableStorage).map((struct) => {
             let store = struct as StructureStorage | StructureContainer;
             return store.store.getUsedCapacity();
@@ -117,6 +139,37 @@ class Util {
 
     public getStorableEnergyRatio(room: Room): number {
         return this.getUsedStorableEnergy(room) / this.getStorableEnergy(room);
+    }
+
+    public creepTypeMatch(creepA: Creep, bodyToTest: BodyPartDefinition[]) {
+        if (creepA.body.length === bodyToTest.length) {
+            let sortedBody = creepA.body.map((body) => body.type).sort((a, b) => a === b ? 0 : a > b ? 1 : -1);
+            let sortedTestBody = bodyToTest.map((body) => body.type).sort((a, b) => a === b ? 0 : a > b ? 1 : -1);
+
+            for (let i = 0; i < sortedBody.length; i++) {
+                if (sortedBody[i] !== sortedTestBody[i]) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public calculateCreepCost(bodyToTest: BodyPartDefinition[]) {
+        let cost = 0;
+        for (let i in bodyToTest) {
+            cost += BODYPART_COST[bodyToTest[i].type];
+        }
+        return cost;
+    }
+
+    public delayedSay(creep: Creep, message: string) {
+        if (Game.time % 1 === 0) {
+            creep.say(message);
+        }
     }
 }
 
