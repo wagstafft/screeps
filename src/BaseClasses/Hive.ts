@@ -194,19 +194,59 @@ function spawnHarvester(spawn: StructureSpawn) {
 }
 
 function spawnRangedDefender(spawn: StructureSpawn) {
-    if (spawnCreep(spawn, 'defenderRanged', [RANGED_ATTACK, RANGED_ATTACK, RANGED_ATTACK, TOUGH, TOUGH, TOUGH, MOVE, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-        if (spawnCreep(spawn, 'defenderRanged', [RANGED_ATTACK, RANGED_ATTACK, TOUGH, TOUGH, MOVE, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-            spawnCreep(spawn, 'defenderRanged', [RANGED_ATTACK, TOUGH, MOVE], rangedDefenderCount, RANGED_DEFENDER_LIMIT);
+    let budget = getSpawnBudget(spawn);
+    let body : BodyPartConstant[] = [];
+
+    if (getUtil().getUsableEnergy(spawn.room) < budget) {
+        return;
+    }
+
+    while (budget >= BODYPART_COST[MOVE]) {
+        if (BODYPART_COST[MOVE] <= budget) {
+            budget -= BODYPART_COST[MOVE];
+            body.push(MOVE);
+        }
+        if (BODYPART_COST[RANGED_ATTACK] <= budget) {
+            budget -= BODYPART_COST[RANGED_ATTACK];
+            body.push(RANGED_ATTACK);
+        }
+        if (BODYPART_COST[TOUGH] <= budget) {
+            budget -= BODYPART_COST[TOUGH];
+            body.push(TOUGH);
         }
     }
+
+    spawnCreep(spawn, `defenderRanged${body.length}`, body, minerCount, MINER_LIMIT);
 }
 
 function spawnMeleeDefender(spawn: StructureSpawn) {
-    if (spawnCreep(spawn, 'defenderMelee', [TOUGH, TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, ATTACK, MOVE, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-        if (spawnCreep(spawn, 'defenderMelee', [TOUGH, TOUGH, TOUGH, TOUGH, ATTACK, ATTACK, MOVE, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT) === ERR_NOT_ENOUGH_ENERGY) {
-            spawnCreep(spawn, 'defenderMelee', [TOUGH, ATTACK, MOVE], meleeDefenderCount, MELEE_DEFENDER_LIMIT);
+    let budget = getSpawnBudget(spawn);
+    let body : BodyPartConstant[] = [];
+
+    if (getUtil().getUsableEnergy(spawn.room) < budget) {
+        return;
+    }
+
+    while (budget >= BODYPART_COST[MOVE]) {
+        if (BODYPART_COST[MOVE] <= budget) {
+            budget -= BODYPART_COST[MOVE];
+            body.push(MOVE);
+        }
+        if (BODYPART_COST[ATTACK] <= budget) {
+            budget -= BODYPART_COST[RANGED_ATTACK];
+            body.push(RANGED_ATTACK);
+        }
+        if (BODYPART_COST[TOUGH] <= budget) {
+            budget -= BODYPART_COST[TOUGH];
+            body.push(TOUGH);
+        }
+        if (BODYPART_COST[TOUGH] <= budget) {
+            budget -= BODYPART_COST[TOUGH];
+            body.push(TOUGH);
         }
     }
+
+    spawnCreep(spawn, `defenderMelee${body.length}`, body, minerCount, MINER_LIMIT);
 }
 
 function spawnClaimDefender(spawn: StructureSpawn) {
